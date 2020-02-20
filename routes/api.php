@@ -34,6 +34,7 @@ Route::group(['namespace' => 'API'], function () {
             'timestamp' => '\d+',
         ]);
         Route::put('songs', 'SongController@update');
+        Route::post('lyrics', 'SongController@getLyrics');
 
         // Interaction routes
         Route::post('interaction/play', 'Interaction\PlayCountController@store');

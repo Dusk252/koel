@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Events\LibraryChanged;
 use App\Factories\StreamerFactory;
+use App\Http\Requests\API\LyricsSearchRequest;
 use App\Http\Requests\API\SongPlayRequest;
 use App\Http\Requests\API\SongUpdateRequest;
 use App\Models\Song;
 use App\Repositories\AlbumRepository;
 use App\Repositories\ArtistRepository;
 use App\Services\MediaInformationService;
+use App\Services\LyricsScraper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Redirector;
@@ -19,17 +22,20 @@ use Illuminate\Routing\Redirector;
 class SongController extends Controller
 {
     private $mediaInformationService;
+    private $lyricsScraper;
     private $streamerFactory;
     private $artistRepository;
     private $albumRepository;
 
     public function __construct(
         MediaInformationService $mediaInformationService,
+        LyricsScraper $lyricsScraper,
         StreamerFactory $streamerFactory,
         ArtistRepository $artistRepository,
         AlbumRepository $albumRepository
     ) {
         $this->mediaInformationService = $mediaInformationService;
+        $this->lyricsScraper = $lyricsScraper;
         $this->streamerFactory = $streamerFactory;
         $this->artistRepository = $artistRepository;
         $this->albumRepository = $albumRepository;
@@ -80,5 +86,12 @@ class SongController extends Controller
             'albums' => $this->albumRepository->getByIds($updatedSongs->pluck('album_id')->all()),
             'songs' => $updatedSongs,
         ]);
+    }
+
+    public function getLyrics(LyricsSearchRequest $request)
+    {
+        $response = $this->lyricsScraper->getLyrics($request->title, $request->artist, $request->provider, $request->resultIndex);
+
+        return response()->json($response);
     }
 }
