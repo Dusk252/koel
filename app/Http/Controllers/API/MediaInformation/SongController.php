@@ -35,8 +35,8 @@ class SongController extends Controller
     {
         return response()->json([
             'lyrics' => $song->lyrics,
-            'album_info' => $this->mediaInformationService->getAlbumInformation($song->album),
-            'artist_info' => $this->mediaInformationService->getArtistInformation($song->artist),
+            // 'album_info' => $this->mediaInformationService->getAlbumInformation($song->album),
+            // 'artist_info' => $this->mediaInformationService->getArtistInformation($song->artist),
             'youtube' => $this->youTubeService->searchVideosRelatedToSong($song),
         ]);
     }

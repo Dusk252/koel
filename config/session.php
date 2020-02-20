@@ -109,7 +109,7 @@ return [
     |
     */
 
-    'cookie' => 'remember_me_before_the_war',
+    'cookie' => 'sekiei_no_sora',
 
     /*
     |--------------------------------------------------------------------------
