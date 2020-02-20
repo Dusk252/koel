@@ -67,6 +67,7 @@ class Song extends Model
      * @var bool
      */
     public $incrementing = false;
+    public $syncSuccess = true;
 
     public function artist(): BelongsTo
     {
@@ -111,10 +112,21 @@ class Song extends Model
 
         $ids = (array) $ids;
 
+        $writeCover = $data['albumCover']['edit'] && $data['albumCover']['value'];
+        $writeCoverToFile = $writeCover;
+
+        if ($writeCover) {
+            $song = self::with('album', 'album.artist')->find(head($ids));
+            $album = $song->album;
+            $album->setCoverFromUrl(trim($data['albumCover']['value']));
+        }
+
         foreach ($ids as $id) {
             if (!$song = self::with('album', 'album.artist')->find($id)) {
                 continue;
             }
+
+            $cover = array_get($song->album->attributes, 'cover');
 
             $updatedSongs->push($song->updateSingle(
                 $data['title']['edit'] ? trim($data['title']['value']) : $song->title,
@@ -128,7 +140,12 @@ class Song extends Model
                 $data['genre']['edit'] ? trim($data['genre']['value']) : $song->genre,
                 $data['comments']['edit'] ? trim($data['comments']['value']) : $song->comments,
                 (int) $data['compilationState'],
+                $cover,
+                $writeCover,
+                $writeCoverToFile
             ));
+
+            $writeCoverToFile = false;
         }
 
         // Our library may have been changed. Broadcast an event to tidy it up if need be.
@@ -150,7 +167,10 @@ class Song extends Model
         string $composer,
         string $genre,
         string $comments,
-        int $compilationState
+        int $compilationState,
+        string $cover,
+        bool $writeCover,
+        bool $writeCoverToFile
     ): self {
         if ($artistName === Artist::VARIOUS_NAME) {
             // If the artist name is "Various Artists", it's a compilation song no matter what.
@@ -173,7 +193,7 @@ class Song extends Model
                 break;
         }
 
-        $album = Album::get($artist, $albumName, $isCompilation);
+        $album = Album::get($artist, $albumName, $isCompilation, $cover);
 
         $this->artist_id = $artist->id;
         $this->album_id = $album->id;
@@ -185,6 +205,8 @@ class Song extends Model
         $this->composer = $composer;
         $this->genre = $genre;
         $this->comments = $comments;
+
+        $this->syncSuccess = $this->writeSongToFile($writeCover, $writeCoverToFile);
         $this->mtime = time();
 
         $this->save();
@@ -195,7 +217,7 @@ class Song extends Model
         // and make sure the lyrics is shown
         $this->makeVisible('lyrics');
 
-        return $this;
+        return $this ;
     }
 
     /**
@@ -260,5 +282,106 @@ class Song extends Model
     public function __toString()
     {
         return $this->id;
+    }
+
+    /**
+     * Set all applicable ID3 info from the file.
+     */
+    private function writeSongToFile(bool $writeCover, bool $writeCoverToFile): bool
+    {
+
+        $getID3 = new getID3;
+        $getID3->setOption(array('encoding'=>'UTF-8'));
+
+        getid3_lib::IncludeDependency(GETID3_INCLUDEPATH.'write.php', __FILE__, true);
+
+        $tagwriter = new getid3_writetags;
+        $tagwriter->filename = $this->path;
+
+        if ($this->dataformat == 'mp3')
+            $tagwriter->tagformats = array('id3v2.3');
+        else if ($this->dataformat == 'flac')
+            $tagwriter->tagformats = array('metaflac');
+        else if ($this->dataformat == 'vorbis' || $this->dataformat == 'ogg')
+            $tagwriter->tagformats = array('vorbiscomment');
+        else
+            return false;
+		$tagwriter->overwrite_tags = true;
+        $tagwriter->tag_encoding   = 'UTF-8';
+        $tagwriter->remove_other_tags = false;
+
+        $tagdata = array(
+            'artist' => array($this->artist->name),
+            'band' => array($this->artist->name),
+            'album' => array($this->album->name),
+            //'albumartist' => '',
+            //'part_of_a_compilation' => '',
+            'title' => array($this->title),
+            'track' => array($this->track),
+            'disc' => array($this->disc),
+            'unsynchronised_lyric' => array($this->lyrics),
+            'lyrics' => array($this->lyrics),
+            'genre' => array($this->genre),
+            'composer' => array($this->composer),
+            'year' => array($this->year),
+            'comment' => array($this->comments)
+        );
+
+        //write cover to folder
+        if ($writeCover && $this->album->getHasCoverAttribute()) {
+            $cover = $this->album->getCoverPathAttribute();
+            $extension = last(explode('.', $cover));
+            $extension = head(explode(':', $extension));
+            $extension = trim(strtolower($extension), '. ');
+            $filefolder = implode('\\', explode('\\', $this->path, -1));
+            $destination = sprintf('%s\cover.%s', $filefolder, $extension);
+
+            if ($coverData = file_get_contents($cover)) {
+                if ($exif_imagetype = exif_imagetype($cover)) {
+
+                    //change embedded cover info
+                    $tagdata['attached_picture'][0]['data']          = $coverData;
+                    $tagdata['attached_picture'][0]['picturetypeid'] = 2;
+                    $tagdata['attached_picture'][0]['description']   = 'cover';
+                    $tagdata['attached_picture'][0]['mime']          = image_type_to_mime_type($exif_imagetype);
+
+                    if ($writeCoverToFile) {
+                        //delete any existing cover files
+                        $matches = array_keys(iterator_to_array(
+                            Finder::create()
+                                ->depth(0)
+                                ->ignoreUnreadableDirs()
+                                ->files()
+                                ->followLinks()
+                                ->name('/(cov|fold)er\.(jpe?g|png)$/i')
+                                ->in(dirname($this->path))
+                        ));
+        
+                        foreach($matches as $file){ // iterate files
+                            if($this->isImage($file))
+                                unlink($file); // delete file
+                        }
+        
+                        //save new cover
+                        file_put_contents($destination, $coverData);
+                    }
+                }
+            }
+        }
+
+        $tagwriter->tag_data = $tagdata;
+        if ($tagwriter->WriteTags()) {
+            return true;
+        }
+        return false;
+    }
+
+    private function isImage(string $path): bool
+    {
+        try {
+            return (bool) exif_imagetype($path);
+        } catch (Exception $e) {
+            return false;
+        }
     }
 }

@@ -54,22 +54,41 @@ class Album extends Model
      * Get an album using some provided information.
      * If such is not found, a new album will be created using the information.
      */
-    public static function get(Artist $artist, string $name, bool $isCompilation = false): self
+    public static function get(Artist $artist, string $name, bool $isCompilation = false, string $originalCover = null): self
     {
         // If this is a compilation album, its artist must be "Various Artists"
         if ($isCompilation) {
             $artist = Artist::getVariousArtist();
         }
 
-        return static::firstOrCreate([
+        $currentAlbum = static::firstOrCreate([
             'artist_id' => $artist->id,
-            'name' => $name ?: self::UNKNOWN_NAME,
+            'name' => $name ?: self::UNKNOWN_NAME
         ]);
+
+        if (!$currentAlbum->getHasCoverAttribute() && $originalCover != null) {
+            $currentAlbum->setCoverAttribute($originalCover);
+            $currentAlbum->save();
+        }
+
+        return $currentAlbum;
     }
 
     public function setCoverAttribute(?string $value): void
     {
         $this->attributes['cover'] = $value ?: self::UNKNOWN_COVER;
+    }
+
+    public function setCoverFromUrl(string $imageUrl): void
+    {
+        $extension = last(explode('.', $imageUrl));
+        $extension = head(explode(':', $extension));
+        $extension = trim(strtolower($extension), '. ');
+        $destination = sprintf('%s/public/img/covers/%s.%s', app()->publicPath(), uniqid('', true), $extension);
+        file_put_contents($destination, file_get_contents($imageUrl));
+
+        $this->update(['cover' => basename($destination)]);
+        $this->attributes['cover'] = basename($destination);
     }
 
     public function getCoverAttribute(?string $value): string
@@ -100,7 +119,7 @@ class Album extends Model
             return null;
         }
 
-        return public_path("/public/img/covers/{$this->cover}");
+        return public_path("/public/img/covers/$cover");
     }
 
     /**
