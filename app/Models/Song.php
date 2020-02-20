@@ -10,6 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use getID3;
+use getid3_lib;
+use getid3_writetags;
+use Symfony\Component\Finder\Finder;
+use SplFileInfo;
 
 /**
  * @property string $path
@@ -19,18 +24,16 @@ use Illuminate\Support\Collection;
  * @property string[] $s3_params
  * @property float  $length
  * @property string $lyrics
+ * @property string $genre
+ * @property string $composer
+ * @property int    $year
+ * @property string $comments
  * @property int    $track
  * @property int    $disc
  * @property int    $album_id
  * @property string $id
  * @property int    $artist_id
  * @property int    $mtime
- *
- * @method static self updateOrCreate(array $where, array $params)
- * @method static Builder select(string $string)
- * @method static Builder inDirectory(string $path)
- * @method static self first()
- * @method static Collection orderBy(...$args)
  */
 class Song extends Model
 {
@@ -55,6 +58,7 @@ class Song extends Model
         'mtime' => 'int',
         'track' => 'int',
         'disc' => 'int',
+        'year' => 'int'
     ];
 
     /**
@@ -106,24 +110,24 @@ class Song extends Model
         $updatedSongs = collect();
 
         $ids = (array) $ids;
-        // If we're updating only one song, take into account the title, lyrics, and track number.
-        $single = count($ids) === 1;
 
         foreach ($ids as $id) {
-            /** @var Song $song */
-            $song = self::with('album', 'album.artist')->find($id);
-
-            if (!$song) {
+            if (!$song = self::with('album', 'album.artist')->find($id)) {
                 continue;
             }
 
             $updatedSongs->push($song->updateSingle(
-                $single ? trim($data['title']) : $song->title,
-                trim($data['albumName'] ?: $song->album->name),
-                trim($data['artistName']) ?: $song->artist->name,
-                $single ? trim($data['lyrics']) : $song->lyrics,
-                $single ? (int) $data['track'] : $song->track,
-                (int) $data['compilationState']
+                $data['title']['edit'] ? trim($data['title']['value']) : $song->title,
+                $data['albumName']['edit'] ? trim($data['albumName']['value']) : $song->album->name,
+                $data['artistName']['edit'] ? trim($data['artistName']['value']) : $song->artist->name,
+                $data['lyrics']['edit'] ? trim($data['lyrics']['value']) : $song->lyrics,
+                $data['track']['edit'] ? (int) $data['track']['value'] : $song->track,
+                $data['disc']['edit'] ? (int) $data['disc']['value'] : $song->disc,
+                $data['year']['edit'] ? (int) $data['year']['value'] : $song->year,
+                $data['composer']['edit'] ? trim($data['composer']['value']) : $song->composer,
+                $data['genre']['edit'] ? trim($data['genre']['value']) : $song->genre,
+                $data['comments']['edit'] ? trim($data['comments']['value']) : $song->comments,
+                (int) $data['compilationState'],
             ));
         }
 
@@ -141,6 +145,11 @@ class Song extends Model
         string $artistName,
         string $lyrics,
         int $track,
+        int $disc,
+        ?int $year,
+        string $composer,
+        string $genre,
+        string $comments,
         int $compilationState
     ): self {
         if ($artistName === Artist::VARIOUS_NAME) {
@@ -171,6 +180,12 @@ class Song extends Model
         $this->title = $title;
         $this->lyrics = $lyrics;
         $this->track = $track;
+        $this->disc = $disc;
+        $this->year = $year;
+        $this->composer = $composer;
+        $this->genre = $genre;
+        $this->comments = $comments;
+        $this->mtime = time();
 
         $this->save();
 

@@ -129,6 +129,15 @@ class FileSynchronizer
             'track' => $this->getTrackNumberFromInfo($info),
             'disc' => (int) array_get($info, 'comments.part_of_a_set.0', 1),
             'lyrics' => '',
+            'genre' => '',
+            'composer' => '',
+            'year' => '',
+            'comments' => '',
+            'dataformat' => array_get($info, 'audio.dataformat'),
+            'bitrate_mode' => array_get($info, 'audio.bitrate_mode') ?? '',
+            'bitrate' => array_get($info, 'audio.bitrate'),
+            'sample_rate' => array_get($info, 'audio.sample_rate'),
+            'channel_mode' => array_get($info, 'audio.channelmode'),
             'cover' => array_get($info, 'comments.picture', [null])[0],
             'path' => $this->filePath,
             'mtime' => $this->fileModifiedTime,
@@ -288,7 +297,8 @@ class FileSynchronizer
      */
     public function isFileChanged(): bool
     {
-        return !$this->isFileNew() && $this->song->mtime !== $this->fileModifiedTime;
+        //fix the issue that originates from the modified time stored in the database being slightly off
+        return !$this->isFileNew() && $this->song->mtime < $this->fileModifiedTime;
     }
 
     public function isFileNewOrChanged(): bool
@@ -326,6 +336,9 @@ class FileSynchronizer
             'albumartist' => 'band',
             'album' => 'album',
             'title' => 'title',
+            'genre' => 'genre',
+            'composer' => 'composer',
+            'year' => 'year',
             'lyrics' => ['unsychronised_lyric', 'unsynchronised_lyric'],
             'compilation' => 'part_of_a_compilation',
         ];

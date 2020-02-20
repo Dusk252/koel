@@ -64,6 +64,9 @@ class SongController extends Controller
             'title' => trim(array_get($tags, 'title', '')),
             'length' => array_get($tags, 'duration', 0) ?: 0,
             'track' => (int) array_get($tags, 'track'),
+            'year' => (int) array_get($tags, 'year'),
+            'genre' => array_get($tags, 'genre'),
+            'composer' => array_get($tags, 'composer'),
             'lyrics' => array_get($tags, 'lyrics', '') ?: '',
             'mtime' => time(),
         ]);
