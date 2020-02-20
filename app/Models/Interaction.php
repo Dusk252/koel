@@ -35,4 +35,9 @@ class Interaction extends Model
     {
         return $this->belongsTo(Song::class);
     }
+
+    public function playInteractions(): HasMany
+    {
+        return $this->hasMany(PlayInteraction::class);
+    }
 }

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Events\SongLikeToggled;
 use App\Models\Interaction;
+use App\Models\PlayInteraction;
+use App\Models\Song;
 use App\Models\User;
 
 class InteractionService
@@ -29,6 +31,9 @@ class InteractionService
             if (!$interaction->exists) {
                 $interaction->liked = false;
             }
+            $playInteraction = new PlayInteraction();
+            $playInteraction->interaction_id = $interaction->id;
+            $playInteraction->save();
 
             $interaction->play_count++;
             $interaction->save();
