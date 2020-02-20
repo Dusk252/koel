@@ -58,7 +58,7 @@ class PlaylistController extends Controller
         $songs = (array) $request->songs;
 
         if ($songs) {
-            $playlist->songs()->sync($songs);
+            $playlist->songs()->sync($this->buildRecordArray($songs));
         }
 
         $playlist->songs = $playlist->songs->pluck('id');
@@ -103,9 +103,17 @@ class PlaylistController extends Controller
 
         abort_if($playlist->is_smart, 403, 'A smart playlist\'s content cannot be updated manually.');
 
-        $playlist->songs()->sync((array) $request->songs);
+        $playlist->songs()->sync($this->buildRecordArray($request->songs));
 
         return response()->json();
+    }
+
+    public function buildRecordArray($records) {
+        $results = array();
+        foreach($records as $k => $val) {
+            $results[$val] = array('sort_order' => $k);
+        }
+        return $results;
     }
 
     /**
@@ -124,8 +132,16 @@ class PlaylistController extends Controller
         return response()->json(
             $playlist->is_smart
                 ? $this->smartPlaylistService->getSongs($playlist)->pluck('id')
-                : $playlist->songs->pluck('id')
+                : $this->mapSortOrder($playlist->songs)
         );
+    }
+
+    public function mapSortOrder($songs){
+        $results = array();
+        foreach($songs as $k => $val) {
+            $results[$k] = array('id' => $val->id, 'sort_order' => $val->getOriginal('pivot_sort_order'));
+        }
+        return $results;
     }
 
     /**
