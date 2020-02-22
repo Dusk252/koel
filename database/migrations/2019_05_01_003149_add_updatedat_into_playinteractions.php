@@ -13,7 +13,7 @@ class AddUpdatedAtIntoPlayInteractions extends Migration
     public function up()
     {
         Schema::table('play_interactions', function (Blueprint $table) {
-            $table->timestamp('updated_at')->after('created_at');
+            $table->timestamp('updated_at')->after('created_at')->nullable();
         });
     }
 
