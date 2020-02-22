@@ -33,20 +33,55 @@ class SongTest extends TestCase
         $this->putAsUser('/api/songs', [
             'songs' => [$song->id],
             'data' => [
-                'title' => 'Foo Bar',
-                'artistName' => 'John Cena',
-                'albumName' => 'One by One',
-                'lyrics' => 'Lorem ipsum dolor sic amet.',
-                'track' => 1,
+                'title' => [
+                    'value' => 'Foo Bar',
+                    'edit' => true
+                ],
+                'artistName' => [
+                    'value' => 'Band',
+                    'edit' => true
+                ],
+                'albumName' => [
+                    'value' => 'Album',
+                    'edit' => true
+                ],
+                'lyrics' => [
+                    'value' => 'Lorem ipsum dolor sic amet.',
+                    'edit' => true
+                ],
+                'track' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'disc' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'year' => [
+                    'value' => 2020,
+                    'edit' => true
+                ],
+                'composer' => [
+                    'value' => 'Composer',
+                    'edit' => true
+                ],
+                'genre' => [
+                    'value' => 'Stop labelling stuff',
+                    'edit' => true
+                ],
+                'comments' => [
+                    'value' => '',
+                    'edit' => true
+                ],
                 'compilationState' => 0,
             ],
         ], $user)
             ->seeStatusCode(200);
 
-        $artist = Artist::whereName('John Cena')->first();
+        $artist = Artist::whereName('Band')->first();
         $this->assertNotNull($artist);
 
-        $album = Album::whereName('One by One')->first();
+        $album = Album::whereName('Album')->first();
         $this->assertNotNull($album);
 
         $this->seeInDatabase('songs', [
@@ -54,6 +89,11 @@ class SongTest extends TestCase
             'album_id' => $album->id,
             'lyrics' => 'Lorem ipsum dolor sic amet.',
             'track' => 1,
+            'disc' => 1,
+            'composer' => 'Composer',
+            'genre' => 'Stop labelling stuff',
+            'comments' => '',
+            'compilationState' => 0
         ]);
     }
 
@@ -66,11 +106,46 @@ class SongTest extends TestCase
         $this->putAsUser('/api/songs', [
             'songs' => [$song->id],
             'data' => [
-                'title' => '',
-                'artistName' => '',
-                'albumName' => 'One by One',
-                'lyrics' => 'Lorem ipsum dolor sic amet.',
-                'track' => 1,
+                'title' => [
+                    'value' => 'Foo Bar',
+                    'edit' => true
+                ],
+                'artistName' => [
+                    'value' => 'A Band',
+                    'edit' => false
+                ],
+                'albumName' => [
+                    'value' => 'Album',
+                    'edit' => true
+                ],
+                'lyrics' => [
+                    'value' => 'Lorem ipsum dolor sic amet.',
+                    'edit' => true
+                ],
+                'track' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'disc' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'year' => [
+                    'value' => 2020,
+                    'edit' => true
+                ],
+                'composer' => [
+                    'value' => 'Composer',
+                    'edit' => true
+                ],
+                'genre' => [
+                    'value' => 'Stop labelling stuff',
+                    'edit' => true
+                ],
+                'comments' => [
+                    'value' => '',
+                    'edit' => true
+                ],
                 'compilationState' => 0,
             ],
         ], $user)
@@ -80,7 +155,7 @@ class SongTest extends TestCase
         $this->assertEquals($originalArtistId, Song::find($song->id)->album->artist->id);
 
         // But we expect a new album to be created for this artist and contain this song
-        $this->assertEquals('One by One', Song::find($song->id)->album->name);
+        $this->assertEquals('Album', Song::find($song->id)->album->name);
     }
 
     public function testMultipleUpdateAllInfoNoCompilation(): void
@@ -91,11 +166,46 @@ class SongTest extends TestCase
         $this->putAsUser('/api/songs', [
             'songs' => $songIds,
             'data' => [
-                'title' => 'foo',
-                'artistName' => 'John Cena',
-                'albumName' => 'One by One',
-                'lyrics' => 'bar',
-                'track' => 9999,
+                'title' => [
+                    'value' => 'foo',
+                    'edit' => false
+                ],
+                'artistName' => [
+                    'value' => 'A Band',
+                    'edit' => false
+                ],
+                'albumName' => [
+                    'value' => 'An Album',
+                    'edit' => true
+                ],
+                'lyrics' => [
+                    'value' => 'bar',
+                    'edit' => false
+                ],
+                'track' => [
+                    'value' => 9999,
+                    'edit' => false
+                ],
+                'disc' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'year' => [
+                    'value' => 2020,
+                    'edit' => true
+                ],
+                'composer' => [
+                    'value' => 'Composer',
+                    'edit' => true
+                ],
+                'genre' => [
+                    'value' => 'Stop labelling stuff',
+                    'edit' => true
+                ],
+                'comments' => [
+                    'value' => '',
+                    'edit' => true
+                ],
                 'compilationState' => 0,
             ],
         ], $user)
@@ -105,18 +215,18 @@ class SongTest extends TestCase
 
         // Even though we post the title, lyrics, and tracks, we don't expect them to take any effect
         // because we're updating multiple songs here.
-        $this->assertNotEquals('foo', $songs[0]->title);
+        $this->assertNotEquals('Foo', $songs[0]->title);
         $this->assertNotEquals('bar', $songs[2]->lyrics);
         $this->assertNotEquals(9999, $songs[2]->track);
 
         // But all of these songs must now belong to a new album and artist set
-        $this->assertEquals('One by One', $songs[0]->album->name);
-        $this->assertEquals('One by One', $songs[1]->album->name);
-        $this->assertEquals('One by One', $songs[2]->album->name);
+        $this->assertEquals('An Album', $songs[0]->album->name);
+        $this->assertEquals('An Album', $songs[1]->album->name);
+        $this->assertEquals('An Album', $songs[2]->album->name);
 
-        $this->assertEquals('John Cena', $songs[0]->album->artist->name);
-        $this->assertEquals('John Cena', $songs[1]->album->artist->name);
-        $this->assertEquals('John Cena', $songs[2]->album->artist->name);
+        $this->assertEquals('A Band', $songs[0]->album->artist->name);
+        $this->assertEquals('A Band', $songs[1]->album->artist->name);
+        $this->assertEquals('A Band', $songs[2]->album->artist->name);
     }
 
     public function testMultipleUpdateSomeInfoNoCompilation(): void
@@ -128,11 +238,46 @@ class SongTest extends TestCase
         $this->putAsUser('/api/songs', [
             'songs' => $songIds,
             'data' => [
-                'title' => 'Foo Bar',
-                'artistName' => 'John Cena',
-                'albumName' => '',
-                'lyrics' => 'Lorem ipsum dolor sic amet.',
-                'track' => 1,
+                'title' => [
+                    'value' => 'foo',
+                    'edit' => false
+                ],
+                'artistName' => [
+                    'value' => 'A Band',
+                    'edit' => false
+                ],
+                'albumName' => [
+                    'value' => '',
+                    'edit' => false
+                ],
+                'lyrics' => [
+                    'value' => 'bar',
+                    'edit' => false
+                ],
+                'track' => [
+                    'value' => 9999,
+                    'edit' => false
+                ],
+                'disc' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'year' => [
+                    'value' => 2020,
+                    'edit' => true
+                ],
+                'composer' => [
+                    'value' => 'Composer',
+                    'edit' => true
+                ],
+                'genre' => [
+                    'value' => 'Stop labelling stuff',
+                    'edit' => true
+                ],
+                'comments' => [
+                    'value' => '',
+                    'edit' => true
+                ],
                 'compilationState' => 0,
             ],
         ], $user)
@@ -150,9 +295,9 @@ class SongTest extends TestCase
         $this->assertNotEquals($songs[2]->album->id, $originalSongs[2]->album->id);
 
         // And of course, the new artist is...
-        $this->assertEquals('John Cena', $songs[0]->album->artist->name); // JOHN CENA!!!
-        $this->assertEquals('John Cena', $songs[1]->album->artist->name); // JOHN CENA!!!
-        $this->assertEquals('John Cena', $songs[2]->album->artist->name); // And... JOHN CENAAAAAAAAAAA!!!
+        $this->assertEquals('A Band', $songs[0]->album->artist->name);
+        $this->assertEquals('A Band', $songs[1]->album->artist->name);
+        $this->assertEquals('A Band', $songs[2]->album->artist->name);
     }
 
     public function testSingleUpdateAllInfoYesCompilation(): void
@@ -163,28 +308,67 @@ class SongTest extends TestCase
         $this->putAsUser('/api/songs', [
             'songs' => [$song->id],
             'data' => [
-                'title' => 'Foo Bar',
-                'artistName' => 'John Cena',
-                'albumName' => 'One by One',
-                'lyrics' => 'Lorem ipsum dolor sic amet.',
-                'track' => 1,
+                'title' => [
+                    'value' => 'Foo Bar',
+                    'edit' => true
+                ],
+                'artistName' => [
+                    'value' => 'Band',
+                    'edit' => true
+                ],
+                'albumName' => [
+                    'value' => 'Album',
+                    'edit' => true
+                ],
+                'lyrics' => [
+                    'value' => 'Lorem ipsum dolor sic amet.',
+                    'edit' => true
+                ],
+                'track' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'disc' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'year' => [
+                    'value' => 2020,
+                    'edit' => true
+                ],
+                'composer' => [
+                    'value' => 'Composer',
+                    'edit' => true
+                ],
+                'genre' => [
+                    'value' => 'Stop labelling stuff',
+                    'edit' => true
+                ],
+                'comments' => [
+                    'value' => '',
+                    'edit' => true
+                ],
                 'compilationState' => 1,
             ],
         ], $user)
             ->seeStatusCode(200);
 
-        $compilationAlbum = Album::whereArtistIdAndName(Artist::VARIOUS_ID, 'One by One')->first();
+        $compilationAlbum = Album::whereArtistIdAndName(Artist::VARIOUS_ID, 'Album')->first();
         $this->assertNotNull($compilationAlbum);
 
-        $artist = Artist::whereName('John Cena')->first();
+        $artist = Artist::whereName('Band')->first();
         $this->assertNotNull($artist);
 
         $this->seeInDatabase('songs', [
             'id' => $song->id,
-            'artist_id' => $artist->id,
-            'album_id' => $compilationAlbum->id,
+            'album_id' => $album->id,
             'lyrics' => 'Lorem ipsum dolor sic amet.',
             'track' => 1,
+            'disc' => 1,
+            'composer' => 'Composer',
+            'genre' => 'Stop labelling stuff',
+            'comments' => '',
+            'track' => 1
         ]);
 
         // Now try changing stuff and make sure things work.
@@ -192,20 +376,55 @@ class SongTest extends TestCase
         $this->putAsUser('/api/songs', [
             'songs' => [$song->id],
             'data' => [
-                'title' => 'Barz Qux',
-                'artistName' => 'John Cena',
-                'albumName' => 'Two by Two',
-                'lyrics' => 'Lorem ipsum dolor sic amet.',
-                'track' => 1,
+                'title' => [
+                    'value' => 'Foo Bar',
+                    'edit' => true
+                ],
+                'artistName' => [
+                    'value' => 'Band',
+                    'edit' => true
+                ],
+                'albumName' => [
+                    'value' => 'Another Album',
+                    'edit' => true
+                ],
+                'lyrics' => [
+                    'value' => 'Lorem ipsum dolor sic amet.',
+                    'edit' => true
+                ],
+                'track' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'disc' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'year' => [
+                    'value' => 2020,
+                    'edit' => true
+                ],
+                'composer' => [
+                    'value' => 'Composer',
+                    'edit' => true
+                ],
+                'genre' => [
+                    'value' => 'Stop labelling stuff',
+                    'edit' => true
+                ],
+                'comments' => [
+                    'value' => '',
+                    'edit' => true
+                ],
                 'compilationState' => 2,
             ],
         ], $user)
             ->seeStatusCode(200);
 
-        $compilationAlbum = Album::whereArtistIdAndName(Artist::VARIOUS_ID, 'Two by Two')->first();
+        $compilationAlbum = Album::whereArtistIdAndName(Artist::VARIOUS_ID, 'Another Album')->first();
         $this->assertNotNull($compilationAlbum);
 
-        $contributingArtist = Artist::whereName('John Cena')->first();
+        $contributingArtist = Artist::whereName('Band')->first();
         $this->assertNotNull($contributingArtist);
 
         $this->seeInDatabase('songs', [
@@ -218,20 +437,55 @@ class SongTest extends TestCase
         $this->putAsUser('/api/songs', [
             'songs' => [$song->id],
             'data' => [
-                'title' => 'Barz Qux',
-                'artistName' => 'Foo Fighters',
-                'albumName' => 'One by One',
-                'lyrics' => 'Lorem ipsum dolor sic amet.',
-                'track' => 1,
+                'title' => [
+                    'value' => 'Foo Bar',
+                    'edit' => true
+                ],
+                'artistName' => [
+                    'value' => 'Another Band',
+                    'edit' => true
+                ],
+                'albumName' => [
+                    'value' => 'Another Album',
+                    'edit' => true
+                ],
+                'lyrics' => [
+                    'value' => 'Lorem ipsum dolor sic amet.',
+                    'edit' => true
+                ],
+                'track' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'disc' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'year' => [
+                    'value' => 2020,
+                    'edit' => true
+                ],
+                'composer' => [
+                    'value' => 'Composer',
+                    'edit' => true
+                ],
+                'genre' => [
+                    'value' => 'Stop labelling stuff',
+                    'edit' => true
+                ],
+                'comments' => [
+                    'value' => '',
+                    'edit' => true
+                ],
                 'compilationState' => 2,
             ],
         ], $user)
             ->seeStatusCode(200);
 
-        $compilationAlbum = Album::whereArtistIdAndName(Artist::VARIOUS_ID, 'One by One')->first();
+        $compilationAlbum = Album::whereArtistIdAndName(Artist::VARIOUS_ID, 'Another Album')->first();
         $this->assertNotNull($compilationAlbum);
 
-        $contributingArtist = Artist::whereName('Foo Fighters')->first();
+        $contributingArtist = Artist::whereName('Another Band')->first();
         $this->assertNotNull($contributingArtist);
 
         $this->seeInDatabase('songs', [
@@ -244,19 +498,54 @@ class SongTest extends TestCase
         $this->putAsUser('/api/songs', [
             'songs' => [$song->id],
             'data' => [
-                'title' => 'Barz Qux',
-                'artistName' => 'Foo Fighters',
-                'albumName' => 'One by One',
-                'lyrics' => 'Lorem ipsum dolor sic amet.',
-                'track' => 1,
+                'title' => [
+                    'value' => 'Foo Bar',
+                    'edit' => true
+                ],
+                'artistName' => [
+                    'value' => 'Another Band',
+                    'edit' => true
+                ],
+                'albumName' => [
+                    'value' => 'Another Album',
+                    'edit' => true
+                ],
+                'lyrics' => [
+                    'value' => 'Lorem ipsum dolor sic amet.',
+                    'edit' => true
+                ],
+                'track' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'disc' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'year' => [
+                    'value' => 2020,
+                    'edit' => true
+                ],
+                'composer' => [
+                    'value' => 'Composer',
+                    'edit' => true
+                ],
+                'genre' => [
+                    'value' => 'Stop labelling stuff',
+                    'edit' => true
+                ],
+                'comments' => [
+                    'value' => '',
+                    'edit' => true
+                ],
                 'compilationState' => 0,
             ],
         ], $user)
             ->seeStatusCode(200);
 
-        $artist = Artist::whereName('Foo Fighters')->first();
+        $artist = Artist::whereName('Another Band')->first();
         $this->assertNotNull($artist);
-        $album = Album::whereArtistIdAndName($artist->id, 'One by One')->first();
+        $album = Album::whereArtistIdAndName($artist->id, 'Another Album')->first();
         $this->assertNotNull($album);
 
         $this->seeInDatabase('songs', [
@@ -270,36 +559,106 @@ class SongTest extends TestCase
         $this->putAsUser('/api/songs', [
             'songs' => [$song->id],
             'data' => [
-                'title' => 'Barz Qux',
-                'artistName' => 'Foo Fighters',
-                'albumName' => 'One by One',
-                'lyrics' => 'Lorem ipsum dolor sic amet.',
-                'track' => 1,
+                'title' => [
+                    'value' => 'Foo Bar',
+                    'edit' => true
+                ],
+                'artistName' => [
+                    'value' => 'Another Band',
+                    'edit' => true
+                ],
+                'albumName' => [
+                    'value' => 'Another Album',
+                    'edit' => true
+                ],
+                'lyrics' => [
+                    'value' => 'Lorem ipsum dolor sic amet.',
+                    'edit' => true
+                ],
+                'track' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'disc' => [
+                    'value' => 1,
+                    'edit' => true
+                ],
+                'year' => [
+                    'value' => 2020,
+                    'edit' => true
+                ],
+                'composer' => [
+                    'value' => 'Composer',
+                    'edit' => true
+                ],
+                'genre' => [
+                    'value' => 'Stop labelling stuff',
+                    'edit' => true
+                ],
+                'comments' => [
+                    'value' => '',
+                    'edit' => true
+                ],
                 'compilationState' => 1,
             ],
         ], $user)
             ->putAsUser('/api/songs', [
                 'songs' => [$song->id],
                 'data' => [
-                    'title' => 'Twilight of the Thunder God',
-                    'artistName' => 'Amon Amarth',
-                    'albumName' => 'Twilight of the Thunder God',
-                    'lyrics' => 'Thor! Nanananananana Batman.',
-                    'track' => 1,
+                    'title' => [
+                        'value' => 'Foo Bar',
+                        'edit' => true
+                    ],
+                    'artistName' => [
+                        'value' => 'Another Band 2',
+                        'edit' => true
+                    ],
+                    'albumName' => [
+                        'value' => 'Another Album 2',
+                        'edit' => true
+                    ],
+                    'lyrics' => [
+                        'value' => 'Tired of lorem ipsum.',
+                        'edit' => true
+                    ],
+                    'track' => [
+                        'value' => 1,
+                        'edit' => true
+                    ],
+                    'disc' => [
+                        'value' => 1,
+                        'edit' => true
+                    ],
+                    'year' => [
+                        'value' => 2020,
+                        'edit' => true
+                    ],
+                    'composer' => [
+                        'value' => 'Composer',
+                        'edit' => true
+                    ],
+                    'genre' => [
+                        'value' => 'Stop labelling stuff',
+                        'edit' => true
+                    ],
+                    'comments' => [
+                        'value' => '',
+                        'edit' => true
+                    ],
                     'compilationState' => 0,
                 ],
             ], $user)
             ->seeStatusCode(200);
 
-        $artist = Artist::whereName('Amon Amarth')->first();
+        $artist = Artist::whereName('Another Band 2')->first();
         $this->assertNotNull($artist);
-        $album = Album::whereArtistIdAndName($artist->id, 'Twilight of the Thunder God')->first();
+        $album = Album::whereArtistIdAndName($artist->id, 'Another Album 2')->first();
         $this->assertNotNull($album);
         $this->seeInDatabase('songs', [
             'id' => $song->id,
             'artist_id' => $artist->id,
             'album_id' => $album->id,
-            'lyrics' => 'Thor! Nanananananana Batman.', // haha
+            'lyrics' => 'Tired of lorem ipsum.',
         ]);
     }
 

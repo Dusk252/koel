@@ -137,6 +137,6 @@ class PlaylistTest extends TestCase
         $playlist->songs()->saveMany($songs);
 
         $this->getAsUser("api/playlist/{$playlist->id}/songs", $user)
-            ->seeJson($songs->pluck('id')->all());
+            ->seeJson($playlist->songs()->pluck('id')->all());
     }
 }
