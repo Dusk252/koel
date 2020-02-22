@@ -14,9 +14,9 @@ class AddComposerYearGenreCommentsIntoSongs extends Migration
     {
         Schema::table('songs', function (Blueprint $table) {
             $table->integer('year')->after('lyrics')->nullable();
-            $table->string('genre')->after('year');
-            $table->string('composer')->after('genre');
-            $table->text('comments')->after('composer');
+            $table->string('genre')->after('year')->nullable();
+            $table->string('composer')->after('genre')->nullable();
+            $table->text('comments')->after('composer')->nullable();
         });
     }
 

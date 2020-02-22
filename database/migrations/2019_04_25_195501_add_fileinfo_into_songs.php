@@ -13,11 +13,11 @@ class AddFileInfoIntoSongs extends Migration
     public function up()
     {
         Schema::table('songs', function (Blueprint $table) {
-            $table->string('dataformat')->after('comments');
-            $table->string('bitrate_mode')->after('dataformat');
+            $table->string('dataformat')->after('comments')->nullable();
+            $table->string('bitrate_mode')->after('dataformat')->nullable();
             $table->integer('bitrate')->after('bitrate_mode')->unsigned()->nullable();
             $table->integer('sample_rate')->after('bitrate')->unsigned()->nullable();;
-            $table->string('channel_mode')->after('sample_rate');
+            $table->string('channel_mode')->after('sample_rate')->nullable();
         });
     }
 

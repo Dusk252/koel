@@ -58,10 +58,7 @@ class Song extends Model
         'mtime' => 'int',
         'track' => 'int',
         'disc' => 'int',
-        'year' => 'int',
-        'genre' => 'string',
-        'composer' => 'string',
-        'comments' => 'string'
+        'year' => 'int'
     ];
 
     /**

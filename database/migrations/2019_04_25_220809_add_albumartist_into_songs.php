@@ -13,7 +13,7 @@ class AddAlbumArtistIntoSongs extends Migration
     public function up()
     {
         Schema::table('songs', function (Blueprint $table) {
-            $table->string('albumartist')->after('title');
+            $table->string('albumartist')->after('title')->nullable();
         });
     }
 
