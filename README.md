@@ -28,3 +28,7 @@ Notes: Most of the features listed below were initially implemented on top of v3
 * Fix issue where artist images don't show up if they're being gotten from the album covers.
 * Have song-list parents pass a default keys parameter.
 * Update the meta info according to the displayed items when searching.
+* Remove zoom from lyrics.
+* Fix bug where album count in artist card isn't updated upon editing song information in a way that makes the number of albums change.
+* Disk number now taken in consideration when ordering by track.
+* Fix order in queuing when playing all songs from an artist so it matches the order displayed in the artist page.
