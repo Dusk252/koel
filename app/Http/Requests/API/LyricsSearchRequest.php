@@ -20,7 +20,7 @@ class LyricsSearchRequest extends Request
     {
         return [
             'title' => 'required|string',
-            'artist' => 'required|string',
+            'artist' => 'nullable|string',
             'provider' => 'required|string',
             'resultIndex' => 'required|int',
         ];

@@ -7,7 +7,9 @@ use DOMXPath;
 
 class LyricsScraper {
 
-    public function getLyrics(string $title, string $artist, string $provider, int $resultIndex): array {
+    public function getLyrics(string $title, ?string $artist, string $provider, int $resultIndex): array {
+        if ($artist == null)
+            $artist = "";
         switch (strtolower($provider)) {
             case 'jlyric':
                 return $this->scrapeJLyric($title, $artist, $resultIndex);
@@ -104,7 +106,7 @@ class LyricsScraper {
                     $e->parentNode->removeChild($e);
                 }
                 $htmlContent = $result->saveHTML($result);
-                //$htmlContent = str_replace(array("\r", "\n"), '', $htmlContent);
+                $htmlContent = str_replace(array("\r", "\n"), '', $htmlContent);
                 $message = 'Showing result '.($resultIndex + 1).' out of '.$resultCount.'.';
             }
         }
