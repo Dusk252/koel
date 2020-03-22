@@ -159,14 +159,14 @@ class FileSynchronizer
      * @param string[] $tags  The (selective) tags to sync (if the song exists)
      * @param bool     $force Whether to force syncing, even if the file is unchanged
      */
-    public function sync(array $tags, bool $force = false): int
+    public function sync(array $tags, bool $force = false): array
     {
         if (!$this->isFileNewOrChanged() && !$force) {
-            return self::SYNC_RESULT_UNMODIFIED;
+            return [self::SYNC_RESULT_UNMODIFIED, $this->fileHash];
         }
 
         if (!$info = $this->getFileInfo()) {
-            return self::SYNC_RESULT_BAD_FILE;
+            return [self::SYNC_RESULT_BAD_FILE, $this->fileHash];
         }
 
         // Fixes #366. If the file is new, we use all tags by simply setting $force to false.
@@ -219,9 +219,10 @@ class FileSynchronizer
         $data = array_except($info, ['artist', 'albumartist', 'album', 'cover', 'compilation']);
         $data['album_id'] = $album->id;
         $data['artist_id'] = $artist->id;
+        $data['path'] = $this->filePath;
         $this->song = Song::updateOrCreate(['id' => $this->fileHash], $data);
 
-        return self::SYNC_RESULT_SUCCESS;
+        return [self::SYNC_RESULT_SUCCESS, $this->fileHash];
     }
 
     /**
@@ -298,7 +299,7 @@ class FileSynchronizer
     public function isFileChanged(): bool
     {
         //fix the issue that originates from the modified time stored in the database being slightly off
-        return !$this->isFileNew() && $this->song->mtime < $this->fileModifiedTime;
+        return !$this->isFileNew() && ($this->song->mtime < $this->fileModifiedTime || $this->song->path != $this->filePath);
     }
 
     public function isFileNewOrChanged(): bool

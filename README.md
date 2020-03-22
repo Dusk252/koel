@@ -19,6 +19,7 @@ Notes: Most of the features listed below were initially implemented on top of v3
 * Logic to keep track of all individual play interactions (rather than simply their count) and the time they happened, with the purpose of eventually implementing a stats page on the frontend.
 * __Playlist ordering.__ Ability for the user to order songs through drag-and-drop in a playlist after creating it. New order is persisted.
 * Add year to album cards. Year is decided from the year tag in the album song if all match.
+* Change song_id generation from using a md5 hash of the path to using one of the data portion of the files. __This makes reorganizing the folder structure or renaming folders possible without breaking song records and interactions in the database.__
 
 ## Fixes and miscellaneous
 

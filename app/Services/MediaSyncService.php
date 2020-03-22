@@ -116,15 +116,15 @@ class MediaSyncService
         foreach ($songPaths as $path) {
             $result = $this->fileSynchronizer->setFile($path)->sync($this->tags, $force);
 
-            switch ($result) {
+            switch ($result[0]) {
                 case FileSynchronizer::SYNC_RESULT_SUCCESS:
-                    $results['success'][] = $path;
+                    $results['success'][] = $result[1];
                     break;
                 case FileSynchronizer::SYNC_RESULT_UNMODIFIED:
-                    $results['unmodified'][] = $path;
+                    $results['unmodified'][] = $result[1];
                     break;
                 default:
-                    $results['bad_files'][] = $path;
+                    $results['bad_files'][] = $result[1];
                     break;
             }
 
@@ -135,9 +135,7 @@ class MediaSyncService
         }
 
         // Delete non-existing songs.
-        $hashes = array_map(function (string $path): string {
-            return $this->helperService->getFileHash($path);
-        }, array_merge($results['unmodified'], $results['success']));
+        $hashes = array_merge($results['unmodified'], $results['success']);
 
         Song::deleteWhereIDsNotIn($hashes);
 
