@@ -99,7 +99,7 @@ class ChangeSongIdToFileHash extends Migration
     private function getHashFromData(string $path): ?string {
         $info = $this->getID3->analyze($path);
         $fileHash = array_get($info, 'md5_data');
-        $salt = uniqid('', true);
+        $salt = "salt=".uniqid('', true);
         if ($this->writeSaltToFile($path, $salt, (array_get($info, 'audio.dataformat') ?: 'mp3'), $info))
             return md5($fileHash.$salt);
         else
@@ -143,7 +143,6 @@ class ChangeSongIdToFileHash extends Migration
 
         $tagwriter->tag_data = $tagdata;
         if ($tagwriter->WriteTags()) {
-            echo('written to file');
             return true;
         }
         return false;
