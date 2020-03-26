@@ -130,7 +130,7 @@ class MediaSyncService
 
             if ($syncCommand) {
                 $syncCommand->advanceProgressBar();
-                $syncCommand->logSyncStatusToConsole($path, $result, $this->fileSynchronizer->getSyncError());
+                $syncCommand->logSyncStatusToConsole($path, $result[0], $this->fileSynchronizer->getSyncError());
             }
         }
 

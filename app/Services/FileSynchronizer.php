@@ -261,7 +261,7 @@ class FileSynchronizer
         return $this->cache->remember(md5($this->filePath.'_cover'), 24 * 60, function (): ?string {
             $matches = array_keys(iterator_to_array(
                 $this->finder->create()
-                    ->depth(0)
+                    ->depth('<3')
                     ->ignoreUnreadableDirs()
                     ->files()
                     ->followLinks()

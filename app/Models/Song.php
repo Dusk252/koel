@@ -298,18 +298,6 @@ class Song extends Model
         $tagwriter = new getid3_writetags;
         $tagwriter->filename = $this->path;
 
-        if ($this->dataformat == 'mp3')
-            $tagwriter->tagformats = array('id3v2.3');
-        else if ($this->dataformat == 'flac')
-            $tagwriter->tagformats = array('metaflac');
-        else if ($this->dataformat == 'vorbis' || $this->dataformat == 'ogg')
-            $tagwriter->tagformats = array('vorbiscomment');
-        else
-            return false;
-		$tagwriter->overwrite_tags = true;
-        $tagwriter->tag_encoding   = 'UTF-8';
-        $tagwriter->remove_other_tags = false;
-
         $tagdata = array(
             'artist' => array($this->artist->name),
             'band' => array($this->artist->name),
@@ -326,6 +314,24 @@ class Song extends Model
             'year' => array($this->year),
             'comment' => array($this->comments)
         );
+
+        if ($this->dataformat == 'mp3')
+            $tagwriter->tagformats = array('id3v2.3');
+        else if ($this->dataformat == 'flac') {
+            $tagwriter->tagformats = array('metaflac');
+            $salt = null;
+            $commentArray = array_get($getID3->analyze($this->path), "tags.vorbiscomment.comment", [null]);
+            if (count($commentArray) > 1)
+                $salt = $commentArray[1];
+            $tagdata['comment'] = array($this->comments, $salt);
+        }
+        else if ($this->dataformat == 'vorbis' || $this->dataformat == 'ogg')
+            $tagwriter->tagformats = array('vorbiscomment');
+        else
+            return false;
+		$tagwriter->overwrite_tags = true;
+        $tagwriter->tag_encoding   = 'UTF-8';
+        $tagwriter->remove_other_tags = false;
 
         //write cover to folder
         if ($writeCover && $this->album->getHasCoverAttribute()) {

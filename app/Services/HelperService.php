@@ -24,13 +24,16 @@ class HelperService
     {
         $info = $this->getID3->analyze($path);
         $fileHash = array_get($info, 'md5_data');
-        $salt = "";
+        $salt = null;
         $dataformat = array_get($info, 'audio.dataformat');
         if ($dataformat != null) {
             if ($dataformat == 'mp3' || $dataformat == 'm4a')
                 $salt = array_get($info, "id3v1.comments.comment", [null])[0];
-            else if ($dataformat == 'flac' || $dataformat == 'vorbis' || $dataformat == 'ogg')
-                $salt = array_get($info, "tags.vorbiscomment.comment", [null])[0];
+            else if ($dataformat == 'flac' || $dataformat == 'vorbis' || $dataformat == 'ogg') {
+                $commentArray = array_get($info, "tags.vorbiscomment.comment", [null]);
+                if (count($commentArray) > 1)
+                    $salt = $commentArray[1];
+            }     
             
             if ($salt == null || substr($salt, 0, 5) != "salt=") {
                 $salt = "salt=".uniqid('', true);
@@ -63,7 +66,7 @@ class HelperService
         else if ($dataformat == 'flac') {
             $tagwriter->tagformats = array('metaflac');
             $tagdata = array_merge(array_get($info, 'flac.comments'), array(
-                'comment' => array($salt)
+                'comment' => array(array_get($info, "tags.vorbiscomment.comment", [""])[0], $salt)
             ));
         }
         else if ($dataformat == 'vorbis' || $dataformat == 'ogg')

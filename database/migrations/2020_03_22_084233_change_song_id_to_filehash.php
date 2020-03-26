@@ -34,11 +34,18 @@ class ChangeSongIdToFileHash extends Migration
     
         foreach ($results as $result){
             $new_id = $this->getHashFromData($result->path);
-            DB::table('songs')
-                ->where('id', $result->id)
+            if ($new_id == null) {
+                DB::table('songs')
+                    ->where('id',$result->id)
+                    ->delete();
+            }
+            else {
+                DB::table('songs')
+                ->where('id',$result->id)
                 ->update([
                     "id" => $new_id
             ]);
+            }
         }
 
         //get the foreign keys back to only cascade on delete
@@ -72,18 +79,11 @@ class ChangeSongIdToFileHash extends Migration
     
         foreach ($results as $result){
             $new_id = $this->getHashFromPath($result->path);
-            if ($new_id == null) {
-                DB::table('songs')
-                    ->where('id',$result->id)
-                    ->delete();
-            }
-            else {
-                DB::table('songs')
-                ->where('id',$result->id)
-                ->update([
-                    "id" => $new_id
+            DB::table('songs')
+            ->where('id', $result->id)
+            ->update([
+                "id" => $new_id
             ]);
-            }
         }
 
         Schema::table('playlist_song', function (Blueprint $table) {
@@ -100,7 +100,7 @@ class ChangeSongIdToFileHash extends Migration
         $info = $this->getID3->analyze($path);
         $fileHash = array_get($info, 'md5_data');
         $salt = uniqid('', true);
-        if ($this->writeSaltToFile($path, $salt, array_get($info, 'audio.dataformat') ?: 'mp3'))
+        if ($this->writeSaltToFile($path, $salt, (array_get($info, 'audio.dataformat') ?: 'mp3'), $info))
             return md5($fileHash.$salt);
         else
             return null;
@@ -120,6 +120,10 @@ class ChangeSongIdToFileHash extends Migration
         $tagwriter = new getid3_writetags;
         $tagwriter->filename = $path;
 
+        $tagwriter->tag_encoding   = 'UTF-8';
+        $tagwriter->remove_other_tags = false;
+        $tagwriter->overwrite_tags = true;
+
         $tagdata = array(
             'comment' => array($salt)
         );
@@ -129,19 +133,17 @@ class ChangeSongIdToFileHash extends Migration
         else if ($dataformat == 'flac') {
             $tagwriter->tagformats = array('metaflac');
             $tagdata = array_merge(array_get($info, 'flac.comments'), array(
-                'comment' => array($salt)
+                'comment' => array(array_get($info, "tags.vorbiscomment.comment", [""])[0], $salt)
             ));
         }
         else if ($dataformat == 'vorbis' || $dataformat == 'ogg')
             $tagwriter->tagformats = array('vorbiscomment');
         else
             return false;
-		$tagwriter->overwrite_tags = true;
-        $tagwriter->tag_encoding   = 'UTF-8';
-        $tagwriter->remove_other_tags = false;
 
         $tagwriter->tag_data = $tagdata;
         if ($tagwriter->WriteTags()) {
+            echo('written to file');
             return true;
         }
         return false;
