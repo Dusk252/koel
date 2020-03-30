@@ -19,6 +19,7 @@ class FileSynchronizer
     const SYNC_RESULT_SUCCESS = 1;
     const SYNC_RESULT_BAD_FILE = 2;
     const SYNC_RESULT_UNMODIFIED = 3;
+    const ALLOWED_FORMATS = array('flac', 'vorbis', 'mp3');
 
     private $getID3;
     private $mediaMetadataService;
@@ -85,6 +86,11 @@ class FileSynchronizer
     {
         $this->splFileInfo = $path instanceof SplFileInfo ? $path : new SplFileInfo($path);
 
+        $this->filePath = $this->splFileInfo->getPathname();
+        $this->fileHash = $this->helperService->getFileHash($this->filePath);
+        $this->song = $this->songRepository->getOneById($this->fileHash);
+        $this->syncError = $this->fileHash == null ? 'Unsupported format.' : null;
+
         // Workaround for #344, where getMTime() fails for certain files with Unicode names on Windows.
         try {
             $this->fileModifiedTime = $this->splFileInfo->getMTime();
@@ -92,11 +98,6 @@ class FileSynchronizer
             // Not worth logging the error. Just use current stamp for mtime.
             $this->fileModifiedTime = time();
         }
-
-        $this->filePath = $this->splFileInfo->getPathname();
-        $this->fileHash = $this->helperService->getFileHash($this->filePath);
-        $this->song = $this->songRepository->getOneById($this->fileHash);
-        $this->syncError = null;
 
         return $this;
     }
@@ -106,11 +107,13 @@ class FileSynchronizer
      */
     public function getFileInfo(): array
     {
+        if ($this->syncError != null)
+            return [];
+
         $info = $this->getID3->analyze($this->filePath);
 
         if (isset($info['error']) || !isset($info['playtime_seconds'])) {
             $this->syncError = isset($info['error']) ? $info['error'][0] : 'No playtime found';
-
             return [];
         }
 
@@ -168,6 +171,9 @@ class FileSynchronizer
         if (!$info = $this->getFileInfo()) {
             return [self::SYNC_RESULT_BAD_FILE, $this->fileHash];
         }
+        if (!in_array(array_get($info, 'dataformat'), self::ALLOWED_FORMATS)) {
+            return [self::SYNC_RESULT_BAD_FILE, $this->fileHash];
+        }
 
         // Fixes #366. If the file is new, we use all tags by simply setting $force to false.
         if ($this->isFileNew()) {
@@ -185,10 +191,14 @@ class FileSynchronizer
             // But if 'album' isn't specified, we don't want to update normal albums.
             // This variable is to keep track of this state.
             $changeCompilationAlbumOnly = false;
+            $changeCompilation = false;
 
             if (in_array('compilation', $tags, true) && !in_array('album', $tags, true)) {
                 $tags[] = 'album';
                 $changeCompilationAlbumOnly = true;
+            }
+            else if (!in_array('compilation', $tags, true)) {
+                $changeCompilation = true;
             }
 
             $info = array_intersect_key($info, array_flip($tags));
@@ -202,7 +212,7 @@ class FileSynchronizer
             if (isset($info['album'])) {
                 $album = $changeCompilationAlbumOnly
                     ? $this->song->album
-                    : Album::get($artist, $info['album'], array_get($info, 'compilation'));
+                    : Album::get($artist, $info['album'], $changeCompilation ? array_get($info, 'compilation') : $this->song->album->artist_id === Artist::VARIOUS_ID);
             } else {
                 $album = $this->song->album;
             }
@@ -220,6 +230,11 @@ class FileSynchronizer
         $data['album_id'] = $album->id;
         $data['artist_id'] = $artist->id;
         $data['path'] = $this->filePath;
+        
+        if($this->isFilePathChanged()) {
+            $data['comments'] = $this->song->comments;
+        }
+
         $this->song = Song::updateOrCreate(['id' => $this->fileHash], $data);
 
         return [self::SYNC_RESULT_SUCCESS, $this->fileHash];
@@ -261,7 +276,7 @@ class FileSynchronizer
         return $this->cache->remember(md5($this->filePath.'_cover'), 24 * 60, function (): ?string {
             $matches = array_keys(iterator_to_array(
                 $this->finder->create()
-                    ->depth('<3')
+                    ->depth('<2')
                     ->ignoreUnreadableDirs()
                     ->files()
                     ->followLinks()
@@ -291,6 +306,15 @@ class FileSynchronizer
     public function isFileNew(): bool
     {
         return !$this->song;
+    }
+
+    /**
+    * Determine if the filepath has changed (its Song record is found, but the path is different).
+    */
+    public function isFilePathChanged(): bool
+    {
+        //fix the issue that originates from the modified time stored in the database being slightly off
+        return !$this->isFileNew() && ($this->song->path != $this->filePath);
     }
 
     /**

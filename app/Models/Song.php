@@ -317,16 +317,18 @@ class Song extends Model
 
         if ($this->dataformat == 'mp3')
             $tagwriter->tagformats = array('id3v2.3');
-        else if ($this->dataformat == 'flac') {
-            $tagwriter->tagformats = array('metaflac');
-            $salt = null;
+        else if ($this->dataformat == 'flac' || $this->dataformat == 'vorbis') {
+            $uid = null;
             $commentArray = array_get($getID3->analyze($this->path), "tags.vorbiscomment.comment", [null]);
             if (count($commentArray) > 1)
-                $salt = $commentArray[1];
-            $tagdata['comment'] = array($this->comments, $salt);
+                $uid = $commentArray[1];
+            $tagdata['comment'] = array($this->comments, $uid);
+            
+            if ($this->dataformat == 'flac')
+                $tagwriter->tagformats = array('metaflac');
+            else
+                $tagwriter->tagformats = array('vorbiscomment');
         }
-        else if ($this->dataformat == 'vorbis' || $this->dataformat == 'ogg')
-            $tagwriter->tagformats = array('vorbiscomment');
         else
             return false;
 		$tagwriter->overwrite_tags = true;

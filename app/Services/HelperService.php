@@ -17,33 +17,35 @@ class HelperService
 
     public function __construct(getID3 $getID3)
     {
+        setlocale(LC_CTYPE, "en_US.UTF-8");
         $this->getID3 = $getID3;
     }
 
-    public function getFileHash(string $path): string
+    public function getFileHash(string $path): ?string
     {
         $info = $this->getID3->analyze($path);
-        $fileHash = array_get($info, 'md5_data');
-        $salt = null;
+        $uid = null;
         $dataformat = array_get($info, 'audio.dataformat');
         if ($dataformat != null) {
-            if ($dataformat == 'mp3' || $dataformat == 'm4a')
-                $salt = array_get($info, "id3v1.comments.comment", [null])[0];
-            else if ($dataformat == 'flac' || $dataformat == 'vorbis' || $dataformat == 'ogg') {
+            if ($dataformat == 'mp3')
+                $uid = array_get($info, "id3v1.comments.comment", [null])[0];
+            else if ($dataformat == 'flac' || $dataformat == 'vorbis') {
                 $commentArray = array_get($info, "tags.vorbiscomment.comment", [null]);
                 if (count($commentArray) > 1)
-                    $salt = $commentArray[1];
+                    $uid = $commentArray[1];
             }     
             
-            if ($salt == null || substr($salt, 0, 5) != "salt=") {
-                $salt = "salt=".uniqid('', true);
-                $this->writeSaltToFile($path, $salt, $dataformat, $info);
+            if ($uid == null || substr($uid, 0, 4) != "uid=") {
+                $uid = "uid=".uniqid('', true);
+                if (!$this->writeuidToFile($path, $uid, $dataformat, $info))
+                    return null;
             }
         }
-        return md5($fileHash.$salt);
+        $test = md5($uid);
+        return $test;
     }
 
-    private function writeSaltToFile(string $path, string $salt, string $dataformat, array $info): bool
+    private function writeuidToFile(string $path, string $uid, string $dataformat, array $info): bool
     {
         $getID3 = new getID3;
         $getID3->setOption(array('encoding'=>'UTF-8'));
@@ -58,19 +60,20 @@ class HelperService
         $tagwriter->overwrite_tags = true;
 
         $tagdata = array(
-            'comment' => array($salt)
+            'comment' => array($uid)
         );
 
         if ($dataformat == 'mp3')
             $tagwriter->tagformats = array('id3v1');
-        else if ($dataformat == 'flac') {
-            $tagwriter->tagformats = array('metaflac');
-            $tagdata = array_merge(array_get($info, 'flac.comments'), array(
-                'comment' => array(array_get($info, "tags.vorbiscomment.comment", [""])[0], $salt)
+        else if ($dataformat == 'flac' || $dataformat == 'vorbis') {
+            $tagdata = array_merge(array_get($info, 'tags.vorbiscomment'), array(
+                'comment' => array(array_get($info, "tags.vorbiscomment.comment", ["."])[0], $uid)
             ));
+            if ($dataformat == 'flac')
+                $tagwriter->tagformats = array('metaflac');
+            else
+                $tagwriter->tagformats = array('vorbiscomment');
         }
-        else if ($dataformat == 'vorbis' || $dataformat == 'ogg')
-            $tagwriter->tagformats = array('vorbiscomment');
         else
             return false;
 
