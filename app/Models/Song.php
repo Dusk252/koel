@@ -199,9 +199,9 @@ class Song extends Model
         $this->album_id = $album->id;
         $this->title = $title;
         $this->lyrics = $lyrics;
-        $this->track = $track;
-        $this->disc = $disc;
-        $this->year = $year;
+        $this->track = (string) $track;
+        $this->disc = (string) $disc;
+        $this->year = (string) $year;
         $this->composer = $composer;
         $this->genre = $genre;
         $this->comments = $comments;
