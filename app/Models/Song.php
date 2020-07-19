@@ -305,13 +305,13 @@ class Song extends Model
             //'albumartist' => '',
             //'part_of_a_compilation' => '',
             'title' => array($this->title),
-            'track' => array($this->track),
-            'disc' => array($this->disc),
+            'track' => array((string) $this->track),
+            'disc' => array((string) $this->disc),
             'unsynchronised_lyric' => array($this->lyrics),
             'lyrics' => array($this->lyrics),
             'genre' => array($this->genre),
             'composer' => array($this->composer),
-            'year' => array($this->year),
+            'year' => array((string) $this->year),
             'comment' => array($this->comments)
         );
 
